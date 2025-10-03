@@ -1,16 +1,34 @@
 {
   "name": "@hubteljs/checkout",
-  "version": "1.0.7",
+  "version": "1.1.4",
   "description": "A JavaScript SDK for handling checkout processes.",
-  "main": "dist/CheckoutSdk.js",
-  "types": "dist/CheckoutSdk.d.ts",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\""
   },
+  "files": [
+    "dist",
+    "README.md",
+    "package.json"
+  ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/hubtel/hubtel-web-merchant-checkout-sdk.git"
+    "url": "git+https://github.com/hubtel/hubtel-web-merchant-checkout-sdk.git"
   },
   "keywords": [
     "checkout",
@@ -21,9 +39,10 @@
   "author": "Hubtel",
   "license": "MIT",
   "devDependencies": {
-    "typescript": "^4.0.0"
-  },
-  "dependencies": {
-    "user": "^0.0.0"
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
   }
 }

@@ -1,18 +1,18 @@
-# Hubtel Web Merchant  Checkout SDK 
+# Hubtel Web Merchant Checkout SDK
 
-The Checkout SDK provide seamless way for businesses to accept payment from their customers. The SDK offers three primary methods of integration: Redirect, Iframe, and Modal. This provides flexibility for developers to choose the integration method that best suits their needs.
+The Checkout SDK provides a seamless way for businesses to accept payments from their customers. The SDK offers three primary methods of integration: Redirect, Iframe, and Modal. This provides flexibility for developers to choose the integration method that best suits their needs.
 
 ## Installation
 
-To use the Hubtel Checkout SDK to collect payment, install the NPM Package or include the CDN link in your HTML file:
+To use the Hubtel Checkout SDK to collect payments, install the NPM Package or include the CDN link in your HTML file:
 
-`NPM`
+### NPM
 
 ```bash
 npm i @hubteljs/checkout
 ```
 
-`CDN`
+### CDN
 
 ```html
 <script src="https://unified-pay.hubtel.com/js/v1/checkout.js"></script>
@@ -41,18 +41,18 @@ Sample Pre-checkout Request:
 }
 ```
 
-Sample Pre-checkout Response:
+### Sample Pre-checkout Response
 
 ```json
 {
   "message": "success",
   "code": "200",
   "data": {
-    "description": "Payment of GHS 50.00 for (18013782) (MR SOMUAH STA ADANE-233557913587) ",
+    "description": "Payment of GHS 50.00 for Order #18013782",
     "clientReference": "f03dbdcf8d4040dd88d0a82794b0229f",
     "amount": 1.0,
     "customerMobileNumber": "233557913587",
-    "callbackUrl": "https://instantservicesproxy.hubtel.com/v2.1/checkout/callback"
+    "callbackUrl": "https://yourbackend.com/v2.1/checkout/callback"
   }
 }
 ```
@@ -77,7 +77,7 @@ const checkout = new CheckoutSdk();
 const purchaseInfo = {
   amount: 50,
   purchaseDescription:
-    "Payment of GHS 5.00 for (18013782) (MR SOMUAH STA ADANE-233557913587)",
+    "Payment of GHS 50.00 for (18013782) (MR SOMUAH STA ADANE-233557913587)",
   customerPhoneNumber: "233557913587",
   clientReference: "unique-client-reference-12345",
 };
@@ -88,6 +88,8 @@ const config = {
   callbackUrl: "https://yourcallbackurl.com",
   merchantAccount: 11334,
   basicAuth: "your-basic-auth-here",
+  // Optional: Restrict to specific payment channels
+  allowedChannels: ["mobileMoney", "bankCard"]
 };
 
 // A function to open the payment modal
@@ -167,7 +169,7 @@ In your HTML file, add a div element with the id `hubtel-checkout-iframe` where 
  
  <body>
   ...
-   <!-- Add this element to where you want the checkout to be rendered. By default the checkout will use the available  height and width of it's container -->
+   <!-- Add this element to where you want the checkout to be rendered. By default the checkout will use the available height and width of its container -->
 
     <div id="hubtel-checkout-iframe"></div>
   ...
@@ -239,14 +241,29 @@ const openIframe = () => {
 | `merchantAccount`     | number   | The merchant account ID.                                                                               |
 | `basicAuth`           | string   | Basic auth credentials.                                                                                |
 | `integrationType`     | string   | Specifies the integration type. Default is "External" which is the type used for external integration. |
-| **callacks**          | Object   | Callback functions for various events.                                                                 |
-| `onInit`              | function | Called when the checkout is initialized.                                                                 |
-| `onPaymentSuccess`    | function | Called when the payment is successful.                                                                 |
-| `onPaymentFailure`    | function | Called when the payment fails.                                                                         |
-| `onLoad`              | function | Called when the iframe or modal is loaded.                                                                      |
-| `onFeesChanged`       | function | Called when the the user select a different payment channel                                                                           |
-| `onClose`             | function | Called when the the modal is closed.                                                                   |
-| `onResize`             | function | Called when the iframe have been resized closed.                                                                   |
+| `allowedChannels`     | array    | Optional. Array of payment channels to display. Options: `"paySmallSmall"`, `"mobileMoney"`, `"bankCard"`, `"wallets"`, `"cashOrCheque"`. If not provided, all configured channels are shown. |
+
+
+## API Reference
+
+### Methods
+
+#### `redirect({ purchaseInfo, config })`
+Redirects to the checkout page in a new window/tab.
+
+**Throws:** Error if popup is blocked by the browser.
+
+#### `openModal({ purchaseInfo, config, callBacks })`
+Opens checkout in a modal overlay.
+
+#### `initIframe({ purchaseInfo, config, iframeStyle, callBacks })`
+Embeds checkout in an iframe element with id `hubtel-checkout-iframe`.
+
+**Throws:** Error if container element is not found.
+
+#### `closePopUp()`
+Closes the modal popup.
+
 
 ## Contribution
 
@@ -260,4 +277,61 @@ We welcome contributions from the developer community to improve the Hubtel Chec
 
 4. **Write Tests**: Write tests for your code changes or improvements.
 
-5. **Submit a Pull Request**: Push your changes to your forked repository and submit a pull request for review.
+5. **Run Linting and Formatting**:
+   ```bash
+   npm run lint
+   npm run format
+   ```
+
+6. **Submit a Pull Request**: Push your changes to your forked repository and submit a pull request for review.
+
+## Troubleshooting
+
+### Common Issues
+
+#### Popup Blocked by Browser
+
+**Solution**: Handle the error and inform the user:
+
+```javascript
+try {
+  checkout.redirect({ purchaseInfo, config });
+} catch (error) {
+  alert("Please allow popups for this site");
+}
+```
+
+#### Container Element Not Found (Iframe Integration)
+
+**Solution**: Ensure the container exists before calling `initIframe()`:
+
+```html
+<!-- Add this to your HTML -->
+<div id="hubtel-checkout-iframe" style="width: 100%; height: 600px;"></div>
+```
+
+#### CORS / CSP Issues with Iframe
+
+**Solution**: If you have Content Security Policy (CSP) headers, allow Hubtel domains:
+
+```
+Content-Security-Policy: frame-src https://unified-pay.hubtel.com;
+```
+
+#### Payment Data is a String, Not Object
+
+The `data` property in payment callbacks is a JSON string. Parse it:
+
+```javascript
+onPaymentSuccess: (response) => {
+  const paymentData = JSON.parse(response.data);
+  console.log(paymentData);
+}
+```
+
+
+### Getting Help
+
+- **GitHub Issues**: [Report bugs or request features](https://github.com/hubtel/hubtel-web-merchant-checkout-sdk/issues)
+- **Hubtel Support**: Contact Hubtel support for account-related issues
+- **Documentation**: Check the [API Reference](#api-reference) section

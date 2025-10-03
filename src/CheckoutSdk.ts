@@ -1,90 +1,88 @@
-interface PurchaseInfo {
+export interface PurchaseInfo {
   /**
-   * @requires
    * The amount to be paid.
    */
   amount: number;
 
   /**
-   * @requires
    * The description of the purchase.
    */
   purchaseDescription: string;
 
   /**
-   * @requires
    * The phone number of the customer.
    */
   customerPhoneNumber: string;
 
   /**
-   * @requires
    * The client reference.
    */
-
   clientReference: string;
 
 }
 
-interface Config {
+
+export type AllowedChannelsType = "paySmallSmall" |  "mobileMoney" | "bankCard" | "wallets" | "cashOrCheque";
+
+export interface Config {
   /**
-   * @optional
-   * @default "enabled"
    * The branding option. If enabled, the merchant name will display at the top payment channels.
-  */
+   * @default "enabled"
+   */
   branding?: "enabled" | "disabled";
 
   /**
-   * @requires
    * The URL to which the payment response will be sent.
    */
   callbackUrl: string;
 
   /**
-   * @optional
    * The branch ID. This is required for internal integrations.
    */
   branchId?: string;
 
   /**
-   * @optional
-   * The business ID. This is required for internal integrations. 
+   * The business ID. This is required for internal integrations.
    */
   businessId?: string;
 
   /**
-   * @optional
    * The bearer token of the user making the payment. This is required for internal integrations.
    */
   bearerToken?: string;
 
-  /* 
-  *The merchant account number. This is required for external integrations.
-  */
+  /**
+   * The merchant account number. This is required for external integrations.
+   */
   merchantAccount?: number;
 
   /**
-   * @optional
    * The basic authentication token. This is required for external integrations.
    */
   basicAuth?: string;
 
   /**
-   * @requires
    * The integration type. This can be either "Internal" or "External".
    */
   integrationType?: "Internal" | "External" | null;
 
+  /**
+   * The list of channels to be displayed. If this is not provided, all channels will be displayed based on the configuration for the merchant.
+   * @default null
+   */
+
+  allowedChannels?:  AllowedChannelsType[] | null;
+
 }
 
-interface Initiate {
+export interface Initiate {
   /**
    * A boolean value indicating whether the checkout has been initialized.
    */
   initialized: boolean;
 }
 
-interface PaymentSuccess {
+export interface PaymentSuccess {
   /**
    * A boolean value indicating whether the payment was successful.
    */
@@ -102,7 +100,7 @@ interface PaymentSuccess {
 }
 
 
-interface PaymentFailure {
+export interface PaymentFailure {
   /**
    * A boolean value indicating whether the payment was successful.
    */
@@ -124,26 +122,34 @@ interface PaymentFailure {
   data: string
 }
 
-interface Callbacks {
+export interface ResizeData {
+  /**
+   * The new height of the iframe.
+   */
+  height?: number;
+  /**
+   * The new width of the iframe.
+   */
+  width?: number;
+}
+
+export interface Callbacks {
 
   /**
- * A callback function that is called when the checkout is initialized.
- * @param data - The data object.
- * @returns 
- */
-
+   * A callback function that is called when the checkout is initialized.
+   * @param data - Contains initialization status information.
+   */
   onInit?: (data: Initiate) => void;
 
   /**
    * A callback function that is called when the payment is successful.
-   * @param data 
+   * @param data - Contains payment success information including mobile number and transaction data.
    */
-
   onPaymentSuccess?: (data: PaymentSuccess) => void;
 
   /**
    * A callback function that is called when the payment fails.
-   * @param data 
+   * @param data - Contains failure information including error message and mobile number.
    */
   onPaymentFailure?: (data: PaymentFailure) => void;
 
@@ -154,15 +160,15 @@ interface Callbacks {
 
   /**
    * A callback function that is called when the fees are changed.
-   * @param fees - A json string representing the new fees.
+   * @param fees - A JSON string representing the new fees structure.
    */
   onFeesChanged?: (fees: string) => void;
 
   /**
    * A callback function that is called when the iframe is resized.
-   * @param data - The data object.
+   * @param data - Contains the new dimensions of the iframe.
    */
-  onResize?: (data: any) => void;
+  onResize?: (data: ResizeData) => void;
 
   /**
    * A callback function that is called when the checkout modal is closed.
@@ -170,17 +176,18 @@ interface Callbacks {
   onClose?: () => void;
 
   /**
+   * @deprecated Use onInit instead. This callback is maintained for backwards compatibility.
    * A callback function that is called when the checkout is initialized.
-   * @param data - The data object.
-   * @returns 
+   * @param data - Contains initialization status information.
    */
-  init?: (data: any) => void;
+  init?: (data: Initiate) => void;
 }
 
-interface IframeStyle {
+export interface IframeStyle {
   width?: string;
   height?: string;
   border?: string;
+  minHeight?: string;
 }
 
 /**
@@ -189,8 +196,10 @@ interface IframeStyle {
  */
 
 
-class CheckoutSdk {
+export class CheckoutSdk {
  private baseUrl = "https://unified-pay.hubtel.com";
+ private messageHandler: ((event: MessageEvent) => void) | null = null;
+ private stylesInjected = false;
 
   constructor(url?: string) {
     if (url) this.baseUrl = url;
@@ -200,20 +209,24 @@ class CheckoutSdk {
  * Redirects the user to the checkout page with the provided purchase information and configuration.
  * @param purchaseInfo - The purchase information.
  * @param config - The configuration.
+ * @throws {Error} If the popup is blocked by the browser.
  */
   redirect({ purchaseInfo, config }: { purchaseInfo: PurchaseInfo; config: Config }) {
     const url = this.createCheckoutUrl(purchaseInfo, config);
-    window.open(url);
+    const popup = window.open(url);
+    if (!popup || popup.closed || typeof popup.closed === "undefined") {
+      throw new Error("Popup was blocked by the browser. Please allow popups for this site.");
+    }
   }
 
   /**
 * Initializes the iframe for the checkout process.
-* 
-* @param options - The options for initializing the iframe.
-* @param options.purchaseInfo - The purchase information.
-* @param options.callBacks - The callback functions.
-* @param options.config - The configuration settings.
-* @param options.iframeStyle - The style options for the iframe (optional).
+*
+* @param purchaseInfo - The purchase information.
+* @param callBacks - The callback functions.
+* @param config - The configuration settings.
+* @param iframeStyle - The style options for the iframe (optional).
+* @throws {Error} If the container element with id "hubtel-checkout-iframe" is not found.
 */
   initIframe({
     purchaseInfo,
@@ -228,16 +241,20 @@ class CheckoutSdk {
   }) {
     this.registerEvents(callBacks);
     const iframeContainer = document.getElementById("hubtel-checkout-iframe");
-    if (!iframeContainer) return;
+    if (!iframeContainer) {
+      throw new Error("Container element with id \"hubtel-checkout-iframe\" not found in the DOM.");
+    }
     iframeContainer.innerHTML = "";
     const loadingIcon = document.createElement("div");
     loadingIcon.textContent = "Loading...";
     iframeContainer.appendChild(loadingIcon);
     const iframe = document.createElement("iframe");
+    iframe.setAttribute("id", "hubtel-iframe-element");
     iframe.src = this.createCheckoutUrl(purchaseInfo, config);
     iframe.style.display = "none";
     iframe.style.width = iframeStyle?.width ?? "100%";
     iframe.style.height = iframeStyle?.height ?? "100%";
+    iframe.style.minHeight = iframeStyle?.minHeight || "400px";
     iframe.style.border = iframeStyle?.border ?? "none";
     iframe.onload = () => {
       iframeContainer.removeChild(loadingIcon);
@@ -259,6 +276,7 @@ class CheckoutSdk {
   }) {
     this.injectStyles();
     this.createIframe();
+    this.handleBackButton();
     this.registerEvents(callBacks);
     this.renderWebpageInPopup(
       this.createCheckoutUrl(purchaseInfo, config),
@@ -268,19 +286,39 @@ class CheckoutSdk {
   }
 
   private createCheckoutUrl(purchaseInfo: PurchaseInfo, config: Config): string {
-    const checkoutData = { ...purchaseInfo, ...config };
-    const queryString = Object.keys(checkoutData)
-      .map((key) => `${key}=${encodeURIComponent((checkoutData as { [key: string]: any })[key])}`)
+    const checkoutData: Record<string, any> = { ...purchaseInfo, ...config };
+
+    const filteredData = Object.keys(checkoutData).reduce((acc, key) => {
+      if (checkoutData[key] !== null && checkoutData[key] !== undefined) {
+        acc[key] = checkoutData[key];
+      }
+      return acc;
+    }, {} as { [key: string]: any });
+
+    const queryString = Object.keys(filteredData)
+      .map((key) => `${key}=${encodeURIComponent(filteredData[key])}`)
       .join("&");
+    const encodedQuery = this.encodeBase64(queryString);
+    const encryptedTarget = encodeURIComponent(encodedQuery);
     const url =
-      checkoutData?.branding === "disabled"
+      filteredData?.branding === "disabled"
         ? `${this.baseUrl}/pay/direct`
         : `${this.baseUrl}/pay`;
-    return `${url}?${queryString}`;
+    return `${url}?p=${encryptedTarget}`;
+  }
+
+  private encodeBase64(data: any) {
+    return btoa(unescape(encodeURIComponent(data)));
+  }
+
+  private handleBackButton() {
+    window.addEventListener("popstate", () => {
+      this.closePopUp();
+    });
   }
 
   private createIframe() {
-    let backdrop = document.createElement("div");
+    const backdrop = document.createElement("div");
     backdrop.setAttribute("id", "backdrop");
     backdrop.classList.add("backdrop");
     const loader = document.createElement("span");
@@ -290,6 +328,11 @@ class CheckoutSdk {
   }
 
   private registerEvents(callBacks: Callbacks) {
+    // Clean up previous event listener if it exists
+    if (this.messageHandler) {
+      window.removeEventListener("message", this.messageHandler, false);
+    }
+
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== this.baseUrl) return;
       const { data } = event;
@@ -303,10 +346,27 @@ class CheckoutSdk {
       } else if (data.feesChanged ) {
         callBacks.onFeesChanged?.(data.fees);
       } else if (data.resize ) {
-        callBacks.onResize?.(data);
+        const iframe = document.getElementById("hubtel-iframe-element");
+        if (iframe) {
+          iframe.style.height = data.height + "px";
+        }
+        callBacks?.onResize?.(data);
       }
     };
+
+    this.messageHandler = handleMessage;
     window.addEventListener("message", handleMessage, false);
+  }
+
+  /**
+   * Removes the message event listener to prevent memory leaks.
+   * Call this method when you're done with the checkout to clean up resources.
+   */
+  destroy() {
+    if (this.messageHandler) {
+      window.removeEventListener("message", this.messageHandler, false);
+      this.messageHandler = null;
+    }
   }
 
   private renderWebpageInPopup(url: string, onClose: any, onLoad: any) {
@@ -323,6 +383,7 @@ class CheckoutSdk {
     modal.appendChild(closeIcon);
     const iframe = document.createElement("iframe");
     iframe.src = url;
+    history.pushState({ modalOpen: true }, "");
     iframe.classList.add("iframe");
     modal.appendChild(iframe);
     document.body.appendChild(modal);
@@ -334,23 +395,27 @@ class CheckoutSdk {
   }
 
   closePopUp() {
-   
+
     const backdrop = document.querySelector(".backdrop");
     const modal = document.querySelector(".checkout-modal");
     if (backdrop) {
-      console.log(backdrop);
       document.body.removeChild(backdrop);
-
     }
     if (modal) {
       document.body.removeChild(modal);
     }
-   
+    history.replaceState(null, "");
+    window.removeEventListener("popstate", this.closePopUp);
+
   }
 
   private injectStyles() {
+    // Prevent injecting styles multiple times
+    if (this.stylesInjected) return;
+
     const style = document.createElement("style");
     style.type = "text/css";
+    style.setAttribute("data-hubtel-checkout", "true");
     style.innerHTML = `
         .backdrop {
             position: fixed;
@@ -359,7 +424,7 @@ class CheckoutSdk {
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 2147483647;
+            z-index: 999998;
         }
 
         .loader {
@@ -367,7 +432,7 @@ class CheckoutSdk {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            z-index: 10000;
+            z-index: 999999;
             /* Your loader styles */
         }
 
@@ -382,7 +447,7 @@ class CheckoutSdk {
             max-width: 480px;
             background-color: #fff;
             border-radius: 10px;
-            z-index: 65675656565;
+            z-index: 1000000;
             transition: opacity 0.5s ease, transform 0.5s ease;
             opacity: 0;
         }
@@ -418,8 +483,8 @@ class CheckoutSdk {
           position : fixed;
           top : 50%;
           left : 50%;
-          transform : translate(-50%, -50%); 
-          z-index : 10000;
+          transform : translate(-50%, -50%);
+          z-index : 999999;
           animation: rotation 1s linear infinite;
       }
 
@@ -446,17 +511,14 @@ class CheckoutSdk {
           }
 
           .iframe {
-            
+
             height: 100%;
-         
+
         }
       }
     `;
     document.head.appendChild(style);
+    this.stylesInjected = true;
   }
 }
-
-
-
-export default CheckoutSdk;
 
