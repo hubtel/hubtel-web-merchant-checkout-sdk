@@ -3,27 +3,44 @@ interface PurchaseInfo {
    * @requires
    * The amount to be paid.
    */
-  amount: number;
+  amount: number
 
   /**
    * @requires
    * The description of the purchase.
    */
-  purchaseDescription: string;
+  purchaseDescription: string
 
   /**
    * @requires
    * The phone number of the customer.
    */
-  customerPhoneNumber: string;
+  customerPhoneNumber: string
 
   /**
    * @requires
    * The client reference.
    */
 
-  clientReference: string;
+  clientReference: string
 
+  /**
+   * @optional
+   * The current longitude coordinate of the customer
+   */
+  longitude?: string
+
+  /**
+   * @optional
+   * The current latitude coordinate of the customer
+   */
+  latitude?: string
+
+  /**
+   * @optional
+   * The customer's ghana card number
+   */
+  ghanaCardNumber?: string
 }
 
 interface Config {
